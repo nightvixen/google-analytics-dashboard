@@ -262,6 +262,7 @@ class GADAdminOptions {
 		    $google_token = $this->ga->google_client->getAccessToken();
 		    add_option( 'gad_oauth_token', $google_token);
 		    update_option( 'gad_auth_token', 'gad_see_oauth' );
+		    set_transient("ga_dash_access_token", TRUE, $google_token->expires_in);
 			$this->admin_plugin_options( 'Login successful.' );
 
 		} catch (Exception $e) {

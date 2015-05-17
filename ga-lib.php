@@ -37,7 +37,6 @@ class GALib
   var $cache_timeout;
   var $google_client;
 
-
   function GALib($auth_type, $auth, $oauth_token, $oauth_secret, $ids = '', $cache_timeout = 60)
   {
     $this->auth_type = $auth_type;
@@ -58,6 +57,17 @@ class GALib
     $this->google_client->setAccessType('offline');
     if($oauth_token)
         $this->google_client->setAccessToken($oauth_token);
+
+     $transient = get_transient("ga_dash_refresh_token");
+     if ($transient === false) {
+	$decoded_token = json_decode($oauth_token);
+	$this->google_client->refreshToken($decoded_token->refresh_token);
+	$newToken = json_decode($this->google_client->getAccessToken());
+	$decoded_token->access_token = $newToken->access_token;
+	$oauth_token = json_encode($decoded_token);
+	update_option( 'gad_oauth_token', $oauth_token );
+	set_transient("ga_dash_access_token", TRUE, $newToken->expires_in);
+    }
   }
 
   function setAuth($auth)
@@ -98,7 +108,7 @@ class GALib
     }
     else
     {
-      $decoded_token = json_decode($this->google_client->getAccessToken());
+      $decoded_token = json_decode($this->oauth_token);
       return "Authorization: Bearer " .$decoded_token->access_token;
     }
   }

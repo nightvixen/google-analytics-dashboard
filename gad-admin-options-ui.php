@@ -23,6 +23,7 @@ require_once( dirname( __FILE__ ) . '/simplefilecache.php' );
 class GADAdminOptionsUI {
 	var $info_message;
 	var $error_message;
+	var $ga;
 
 	function GADAdminOptionsUI() {
 		$this->__construct();
@@ -31,6 +32,7 @@ class GADAdminOptionsUI {
 	function __construct() {
 		$this->info_message  = '';
 		$this->error_message = '';
+		$this->ga = new GALib( 'oauth', NULL, get_option( 'gad_oauth_token' ), get_option( 'gad_oauth_secret' ), '', get_option( 'gad_cache_timeout' ) !== false ? get_option( 'gad_cache_timeout' ) : 60 );
 	}
 
 	/**
@@ -227,16 +229,30 @@ class GADAdminOptionsUI {
 					<tr valign="top">
 						<th><?php _e( 'This is the prefered method of attaching your Google account.<br/>
                 Clicking the "Start the Login Process" button will redirect you to a login page at google.com.<br/>
-                After accepting the login there you will be returned here.', 'google-analytics-dashboard' ); ?></th>
+                After accepting the login there you will be provided by security token, you need to enter it below.', 'google-analytics-dashboard' ); ?></th>
 					</tr>
-
+</table>
 					<tr valign="top">
 						<td><p class="submit">
-								<input type="submit" name="SubmitLogin" class="button-primary" value="<?php _e( 'Start the Login Process &raquo;', 'google-analytics-dashboard' ); ?>" />
+								<a href="<?php echo $this->ga->google_client->createAuthUrl(); ?>" target="_blank" name="SubmitLogin" class="button-primary" ><?php _e( 'Start the Login Process &raquo;', 'google-analytics-dashboard' ); ?></a>
 							</p></td>
 					</tr>
+<table class="form-table">
+
+					<tr valign="top">
+				    <th scope="row">
+					<label for="ga_authcode">Authorization code</label></th>
+				    <td>
+				        <input name="ga_authcode" size="15" id="ga_authcode" class="regular-text" value="" type="text">
+				    </td>
+					</tr>
+
+
 
 				</table>
+	<p class="submit">
+		    <input name="SubmitOauth" class="button-primary" value="Save code »" type="submit">
+		</p>
 
 			</form>
 

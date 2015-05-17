@@ -16,7 +16,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-require_once(dirname(__FILE__) . '/OAuth.php');
+require_once(dirname(__FILE__) . '/tools/gapi.php');
 require_once(dirname(__FILE__) . '/simplefilecache.php');
 
 class GALib
@@ -24,6 +24,7 @@ class GALib
   var $auth_type;
 
   var $oauth_token;
+  var $oauth_refresh_token;
   var $oauth_secret;
   var $auth;
   var $ids;
@@ -34,6 +35,8 @@ class GALib
   var $http_code;
   var $error_message;
   var $cache_timeout;
+  var $google_client;
+
 
   function GALib($auth_type, $auth, $oauth_token, $oauth_secret, $ids = '', $cache_timeout = 60)
   {
@@ -43,6 +46,18 @@ class GALib
     $this->oauth_secret = $oauth_secret;
     $this->ids = $ids;
     $this->cache_timeout = $cache_timeout;
+
+    $client_id = '65556128781.apps.googleusercontent.com';
+    $client_secret = 'Kc7888wgbc_JbeCpbFjnYpwE';
+    $redirect_uri = 'urn:ietf:wg:oauth:2.0:oob';
+    $this->google_client = new Google_Client();
+    $this->google_client->setClientId($client_id);
+    $this->google_client->setClientSecret($client_secret);
+    $this->google_client->setRedirectUri($redirect_uri);
+    $this->google_client->setScopes('https://www.googleapis.com/auth/analytics.readonly');
+    $this->google_client->setAccessType('offline');
+    if($oauth_token)
+        $this->google_client->setAccessToken($oauth_token);
   }
 
   function setAuth($auth)
@@ -83,24 +98,8 @@ class GALib
     }
     else
     {
-      if($url == NULL)
-      {
-        error_log('No URL to sign.');
-      }
-
-      $signature_method = new GADOAuthSignatureMethod_HMAC_SHA1();
-
-      $params = array();
-
-      $consumer = new GADOAuthConsumer('anonymous', 'anonymous', NULL);
-
-      $token = new GADOAuthConsumer($this->oauth_token, $this->oauth_secret);
-
-      $oauth_req = GADOAuthRequest::from_consumer_and_token($consumer, $token, $request_type, $url, $params);
-
-      $oauth_req->sign_request($signature_method, $consumer, $token);
-
-      return $oauth_req->to_header();
+      $decoded_token = json_decode($this->google_client->getAccessToken());
+      return "Authorization: Bearer " .$decoded_token->access_token;
     }
   }
 

@@ -20,16 +20,19 @@ require_once( dirname( __FILE__ ) . '/ga-lib.php' );
 require_once( dirname( __FILE__ ) . '/aux-lib.php' );
 require_once( dirname( __FILE__ ) . '/gauth-lib.php' );
 require_once( dirname( __FILE__ ) . '/simplefilecache.php' );
-require_once( dirname( __FILE__ ) . '/OAuth.php' );
+require_once( dirname( __FILE__ ) . '/tools/gapi.php' );
 
 require_once( dirname( __FILE__ ) . '/gad-admin-options-ui.php' );
 
 class GADAdminOptions {
+	var $ga;
 	function GADAdminOptions() {
 		$this->__construct();
 	}
 
 	function __construct() {
+	$this->ga = new GALib( 'oauth', NULL, get_option( 'gad_oauth_token' ), get_option( 'gad_oauth_secret' ), '', get_option( 'gad_cache_timeout' ) !== false ? get_option( 'gad_cache_timeout' ) : 60 );
+
 	}
 
 	function register_for_actions_and_filters() {
@@ -81,6 +84,7 @@ class GADAdminOptions {
 		}
 	}
 
+
 	function admin_handle_other_options( $info_message = '' ) {
 		if ( isset( $_POST['SubmitOptions'] ) ) {
 			if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) {
@@ -99,6 +103,7 @@ class GADAdminOptions {
 			}
 
 			if ( isset( $_POST['ga_forget_all'] ) ) {
+				$this->ga->google_client->revokeToken();
 				delete_option( 'gad_oauth_token' );
 				delete_option( 'gad_oauth_secret' );
 				delete_option( 'gad_account_id' );
@@ -121,6 +126,7 @@ class GADAdminOptions {
 			add_option( 'gad_account_id', sanitize_text_field( $_POST['ga_account_id'] ) );
 
 			if ( isset( $_POST['ga_forget_auth'] ) ) {
+				$this->ga->google_client->revokeToken();
 				delete_option( 'gad_oauth_token' );
 				delete_option( 'gad_oauth_secret' );
 				delete_option( 'gad_auth_token' );
@@ -181,7 +187,7 @@ class GADAdminOptions {
 			$info_message = 'Options Saved';
 		}
 
-		if ( get_option( 'gad_auth_token' ) == 'gad_see_oauth' ) {
+		if ( get_option( 'gad_auth_token' ) == 'gad_see_oauth') {
 			$ga = new GALib( 'oauth', NULL, get_option( 'gad_oauth_token' ), get_option( 'gad_oauth_secret' ), '', get_option( 'gad_cache_timeout' ) !== false ? get_option( 'gad_cache_timeout' ) : 60 );
 		} else {
 			$ga = new GALib( 'client', get_option( 'gad_auth_token' ), NULL, NULL, '', get_option( 'gad_cache_timeout' ) !== false ? get_option( 'gad_cache_timeout' ) : 60 );
@@ -234,7 +240,37 @@ class GADAdminOptions {
 			}
 		}
 
+		if ( isset( $_POST['SubmitOauth'] ) ) {
+			if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) {
+				die( __( 'Cheatin&#8217; uh?' ) );
+			}
+				if ( $this->admin_handle_oauth2_login_options( $ui, $info_message ) ) {
+					return;
+				}
+
+		}
 		$ui->display_admin_handle_login_options( $gauth );
+	}
+
+	function admin_handle_oauth2_login_options( &$ui, $info_message = '' ) {
+
+		if ( ! isset( $_POST['ga_authcode'] ) || trim( $_POST['ga_authcode'] ) == '' ) {
+			$error_message = "Auth code is required";
+		} else {
+		try {
+		    $this->ga->google_client->authenticate($_POST['ga_authcode']);
+		    $google_token = $this->ga->google_client->getAccessToken();
+		    add_option( 'gad_oauth_token', $google_token);
+		    update_option( 'gad_auth_token', 'gad_see_oauth' );
+			$this->admin_plugin_options( 'Login successful.' );
+
+		} catch (Exception $e) {
+	        echo 'Caught exception: ',  $e->getMessage(), "\n";
+		return;
+		}
+
+	    }
+	    return true;
 	}
 
 	function admin_handle_clientlogin_login_options( &$ui, $info_message = '' ) {
